@@ -14,7 +14,7 @@ class Patient extends Model
         'name', 'date_of_birth', 'gender', 'phone', 'address',
         'emergency_contact_name', 'emergency_contact_phone',
         'doctor_id', 'ward', 'bed_number', 'status',
-        'diagnosis', 'admitted_at',        // ← remove 'notes' from here
+        'diagnosis', 'admitted_at',
         'blood_pressure', 'pulse', 'temperature', 'weight',
         'discharged_at', 'final_diagnosis', 'discharge_notes',
         'followup_date', 'discharge_condition',
@@ -27,7 +27,8 @@ class Patient extends Model
         'date_of_birth' => 'date',
     ];
 
-    // Relationships
+    // ── Relationships ──────────────────────────────────────────────────
+
     public function doctor()
     {
         return $this->belongsTo(User::class, 'doctor_id');
@@ -43,7 +44,13 @@ class Patient extends Model
         return $this->hasMany(Prescription::class)->orderByDesc('created_at');
     }
 
-    // Scopes
+    public function labRequests()
+    {
+        return $this->hasMany(LabRequest::class)->orderByDesc('created_at');
+    }
+
+    // ── Scopes ─────────────────────────────────────────────────────────
+
     public function scopeAdmitted($query)
     {
         return $query->whereNotIn('status', ['discharged']);
@@ -63,7 +70,8 @@ class Patient extends Model
         });
     }
 
-    // Helpers
+    // ── Accessors ──────────────────────────────────────────────────────
+
     public function getAgeAttribute()
     {
         return $this->date_of_birth?->age;
@@ -75,4 +83,15 @@ class Patient extends Model
         $end = $this->discharged_at ?? now();
         return (int) $this->admitted_at->diffInDays($end);
     }
+
+    public function bill()
+    {
+        return $this->hasOne(Bill::class);
+    }
+
+    public function mortuaryRecord()
+    {
+        return $this->hasOne(MortuaryRecord::class);
+    }
 }
+

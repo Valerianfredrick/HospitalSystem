@@ -5,7 +5,9 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\AuthController;
-
+use App\Http\Controllers\LabController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\MortuaryController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes - Hospital Management System
@@ -44,29 +46,31 @@ Route::middleware(['auth'])->group(function () {
         // ── Patients ──────────────────────────────────────────────────
         Route::prefix('patients')->name('patients.')->group(function () {
 
-            // ── Static routes FIRST (before any /{patient} wildcard) ──
             Route::get('/',           [PatientController::class, 'index'])->name('index');
             Route::get('/create',     [PatientController::class, 'create'])->name('create');
             Route::post('/',          [PatientController::class, 'store'])->name('store');
             Route::get('/admissions', [PatientController::class, 'admission'])->name('admission');
-            Route::get('/discharges', [PatientController::class, 'discharge'])->name('discharge');
+            // Inside patients prefix group — replace the old discharge.submit
+            Route::put('/discharge', [PatientController::class, 'dischargeSubmit'])->name('discharge.submit');
 
-            // ── Wildcard routes AFTER static routes ──
             Route::get('/{patient}',      [PatientController::class, 'show'])->name('show');
             Route::get('/{patient}/edit', [PatientController::class, 'edit'])->name('edit');
             Route::put('/{patient}',      [PatientController::class, 'update'])->name('update');
 
-            // Discharge
-            Route::get('/{patient}/discharge', [PatientController::class, 'dischargeForm'])->name('discharge.form');
-            Route::put('/{patient}/discharge', [PatientController::class, 'dischargeSubmit'])->name('discharge.submit');
+            Route::get('/{patient}/discharge',  [PatientController::class, 'dischargeForm'])->name('discharge.form');
+            Route::put('/{patient}/discharge',  [PatientController::class, 'dischargeSubmit'])->name('discharge.submit');
 
-            // Clinical notes
             Route::get('/{patient}/notes/create', fn($patient) => view('patients.notes_create', compact('patient')))->name('notes.create');
             Route::post('/{patient}/notes',       [PatientController::class, 'addNote'])->name('notes.store');
 
-            // Prescriptions
             Route::get('/{patient}/prescriptions/create', fn($patient) => view('patients.prescriptions_create', compact('patient')))->name('prescriptions.create');
             Route::post('/{patient}/prescriptions',       [PatientController::class, 'addPrescription'])->name('prescriptions.store');
+
+            // ── Lab Requests (nested under patient, created by doctor/nurse) ──
+            Route::prefix('/{patient}/lab')->name('lab.')->group(function () {
+                Route::get('/create', [LabController::class, 'create'])->name('create');
+                Route::post('/',      [LabController::class, 'store'])->name('store');
+            });
         });
     });
 
@@ -89,4 +93,28 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/users',    [AdminController::class, 'createUser'])->name('users.store');
         Route::put('/users/{user}/role', [AdminController::class, 'updateRole'])->name('users.role');
     });
+
+    // ── Lab Attendant + Doctor/Nurse routes ────────────────────────────
+    Route::middleware('role:lab_attendant,doctor,nurse')->prefix('lab')->name('lab.')->group(function () {
+        Route::get('/dashboard',                       [LabController::class, 'index'])->name('dashboard');
+        Route::get('/requests',                        [LabController::class, 'requests'])->name('requests');
+        Route::get('/requests/{labRequest}',           [LabController::class, 'show'])->name('show');
+        Route::patch('/requests/{labRequest}/start',   [LabController::class, 'startTest'])->name('start');
+        Route::patch('/requests/{labRequest}/results', [LabController::class, 'submitResults'])->name('results');
+    });
+});
+
+Route::middleware('role:accountant,admin')->prefix('billing')->name('billing.')->group(function () {
+    Route::get('/',                   [BillingController::class, 'index'])->name('index');
+    Route::get('/{bill}',             [BillingController::class, 'show'])->name('show');
+    Route::patch('/{bill}/process',   [BillingController::class, 'process'])->name('process');
+    Route::patch('/{bill}/waive',     [BillingController::class, 'waive'])->name('waive');
+});
+
+// ── Mortuary routes ────────────────────────────────────────────────────
+Route::middleware('role:mortuary,admin')->prefix('mortuary')->name('mortuary.')->group(function () {
+    Route::get('/',                        [MortuaryController::class, 'index'])->name('index');
+    Route::get('/{record}',                [MortuaryController::class, 'show'])->name('show');
+    Route::patch('/{record}/receive',      [MortuaryController::class, 'receive'])->name('receive');
+    Route::patch('/{record}/release',      [MortuaryController::class, 'release'])->name('release');
 });

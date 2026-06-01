@@ -50,6 +50,7 @@
 </head>
 <body>
 
+{{-- ── SIDEBAR ──────────────────────────────────────────────────────────── --}}
 <aside class="sidebar">
     <div style="padding: 1.5rem 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.07);">
         <a href="{{ url('/') }}" class="flex items-center gap-2">
@@ -88,8 +89,10 @@
     </div>
 </aside>
 
+{{-- ── MAIN CONTENT ─────────────────────────────────────────────────────── --}}
 <div class="main-content">
-    <!-- Topbar -->
+
+    {{-- Top bar --}}
     <header style="background:white; border-bottom:1px solid #ede9fe; padding:0 2rem; height:64px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:40;">
         <div class="flex items-center gap-3">
             <a href="{{ route('patients.index') }}" class="text-gray-400 hover:text-primary-600">
@@ -102,6 +105,11 @@
         </div>
         <div class="flex items-center gap-2">
             @if($patient->status !== 'discharged')
+                {{-- Send to Lab --}}
+                <a href="{{ route('patients.lab.create', $patient) }}"
+                   class="px-4 py-2 text-xs font-semibold text-secondary-600 border border-secondary-200 rounded-lg hover:bg-teal-50 transition-colors">
+                    <i class="fas fa-flask mr-1"></i> Send to Lab
+                </a>
                 <a href="{{ route('patients.discharge.form', $patient) }}"
                    class="px-4 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
                     <i class="fas fa-sign-out-alt mr-1"></i> Discharge
@@ -128,7 +136,7 @@
             </div>
         @endif
 
-        <!-- Patient Header Card -->
+        {{-- Patient Header Card --}}
         <div class="bg-gradient-main rounded-2xl p-6 text-white">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
@@ -167,11 +175,11 @@
             </div>
         </div>
 
+        {{-- ── 3-COLUMN GRID ──────────────────────────────────────────────── --}}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <!-- Left: Patient Details -->
+            {{-- LEFT: Patient Details --}}
             <div class="space-y-5">
-                <!-- Demographics -->
                 <div class="section-card">
                     <h3 class="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
                         <i class="fas fa-id-card text-primary-500"></i> Patient Details
@@ -189,7 +197,6 @@
                     </div>
                 </div>
 
-                <!-- Diagnosis -->
                 <div class="section-card">
                     <h3 class="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
                         <i class="fas fa-stethoscope text-primary-500"></i> Diagnosis
@@ -210,9 +217,63 @@
                         @endif
                     </div>
                 @endif
+
+                {{-- Lab Results --}}
+                @if($patient->labRequests->isNotEmpty())
+                    <div class="section-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                <i class="fas fa-flask text-secondary-500"></i> Lab Results
+                            </h3>
+                            <span class="text-xs text-gray-400">{{ $patient->labRequests->count() }} requests</span>
+                        </div>
+                        <div class="space-y-3">
+                            @foreach($patient->labRequests->sortByDesc('created_at') as $req)
+                                <div class="p-3 rounded-xl border
+                                    {{ $req->result_flag === 'critical' ? 'bg-red-50 border-red-200' :
+                                       ($req->result_flag === 'abnormal' ? 'bg-amber-50 border-amber-200' :
+                                        ($req->status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200')) }}">
+                                    <div class="flex items-center justify-between mb-1 flex-wrap gap-1">
+                                        <span class="text-xs font-bold text-gray-800">{{ $req->test_name }}</span>
+                                        <div class="flex items-center gap-1">
+                                            {{-- Status badge --}}
+                                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                                                {{ $req->status === 'completed'   ? 'bg-green-100 text-green-700' :
+                                                   ($req->status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                                                                      'bg-amber-100 text-amber-700') }}">
+                                                {{ ucfirst(str_replace('_', ' ', $req->status)) }}
+                                            </span>
+                                            {{-- Flag badge --}}
+                                            @if($req->result_flag)
+                                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                                                    {{ $req->result_flag === 'normal'   ? 'bg-green-100 text-green-700' :
+                                                       ($req->result_flag === 'abnormal' ? 'bg-amber-100 text-amber-700' :
+                                                                                            'bg-red-100 text-red-700') }}">
+                                                    {{ ucfirst($req->result_flag) }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @if($req->results)
+                                        <p class="text-xs text-gray-700 leading-relaxed whitespace-pre-line mt-1">{{ $req->results }}</p>
+                                        @if($req->interpretation)
+                                            <p class="text-xs text-gray-500 italic mt-1">{{ $req->interpretation }}</p>
+                                        @endif
+                                    @else
+                                        <p class="text-xs text-gray-400 italic mt-1">Awaiting results...</p>
+                                    @endif
+                                    <p class="text-xs text-gray-400 mt-1.5">
+                                        Requested {{ $req->created_at->format('d M Y') }}
+                                        @if($req->requestedBy) · by Dr. {{ $req->requestedBy->name }} @endif
+                                    </p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
 
-            <!-- Middle: Clinical Notes -->
+            {{-- MIDDLE: Clinical Notes --}}
             <div class="space-y-5">
                 <div class="section-card">
                     <div class="flex items-center justify-between mb-4">
@@ -262,7 +323,7 @@
                 </div>
             </div>
 
-            <!-- Right: Prescriptions -->
+            {{-- RIGHT: Prescriptions --}}
             <div class="space-y-5">
                 <div class="section-card">
                     <div class="flex items-center justify-between mb-4">

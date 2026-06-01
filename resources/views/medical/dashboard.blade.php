@@ -49,7 +49,7 @@
         .main-content { margin-left: 260px; min-height: 100vh; }
         .topbar { background: white; border-bottom: 1px solid #ede9fe; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 40; }
 
-        /* Gradient text */
+        /* Gradient */
         .text-gradient { background: linear-gradient(135deg, #6d28d9 0%, #0694a2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .bg-gradient-main { background: linear-gradient(135deg, #6d28d9 0%, #0694a2 100%); }
 
@@ -79,7 +79,7 @@
         /* Vital card */
         .vital-card { background: linear-gradient(135deg, rgba(109,40,217,0.04) 0%, rgba(6,148,162,0.04) 100%); border: 1px solid rgba(109,40,217,0.12); border-radius: 12px; padding: 0.9rem 1rem; }
 
-        /* Quick action button */
+        /* Quick action */
         .quick-action { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1rem 0.75rem; background: white; border: 1px solid #ede9fe; border-radius: 14px; font-size: 0.75rem; font-weight: 600; color: #6d28d9; cursor: pointer; transition: all 0.2s; text-decoration: none; }
         .quick-action:hover { background: #f5f3ff; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(124,58,237,0.1); }
         .quick-action .icon-wrap { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed 0%, #0694a2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 1rem; }
@@ -91,7 +91,7 @@
         .timeline-dot { position: absolute; left: 0; top: 6px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #7c3aed; background: white; }
         .timeline-dot.filled { background: #7c3aed; }
 
-        /* Alert banner */
+        /* Alert */
         .alert-critical { background: linear-gradient(135deg, #fee2e2 0%, #fef3c7 100%); border: 1px solid #fca5a5; border-radius: 12px; }
 
         /* Scroll */
@@ -99,7 +99,7 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #ddd6fe; border-radius: 99px; }
 
-        /* Mobile sidebar toggle */
+        /* Mobile */
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 49; }
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); }
@@ -108,22 +108,20 @@
             .sidebar-overlay.open { display: block; }
         }
 
-        /* Pulse animation */
+        /* Pulse */
         @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
         .pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
 
-        /* Card hover glow */
+        /* Glow */
         .card-glow:hover { box-shadow: 0 0 0 3px rgba(124,58,237,0.15), 0 12px 30px rgba(124,58,237,0.1); }
     </style>
 </head>
 <body>
 
-<!-- Sidebar overlay (mobile) -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-    <!-- Logo -->
     <div class="sidebar-logo">
         <a href="{{ url('/') }}" class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-lg bg-gradient-main flex items-center justify-center">
@@ -134,66 +132,54 @@
         <p class="text-xs text-white/30 mt-1 ml-10">Medical Dashboard</p>
     </div>
 
-    <!-- Navigation -->
     <nav class="sidebar-nav">
         <p class="nav-section-label">Main</p>
-
         <a href="{{ route('medical.dashboard') }}" class="nav-item active">
             <span class="icon"><i class="fas fa-th-large"></i></span>
             Dashboard
         </a>
-
         <a href="{{ route('patients.index') }}" class="nav-item">
             <span class="icon"><i class="fas fa-user-injured"></i></span>
             All Patients
         </a>
-
         <a href="{{ route('patients.admission') }}" class="nav-item">
             <span class="icon"><i class="fas fa-bed"></i></span>
             Admissions
         </a>
-
         <a href="{{ route('patients.discharge') }}" class="nav-item">
             <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
             Discharges
         </a>
 
         <p class="nav-section-label">Clinical</p>
-
         <a href="#" class="nav-item">
             <span class="icon"><i class="fas fa-notes-medical"></i></span>
             Clinical Notes
         </a>
-
         <a href="#" class="nav-item">
             <span class="icon"><i class="fas fa-file-prescription"></i></span>
             Prescriptions
         </a>
-
         <a href="#" class="nav-item">
             <span class="icon"><i class="fas fa-flask"></i></span>
             Lab Orders
         </a>
 
         <p class="nav-section-label">Ward</p>
-
         <a href="#" class="nav-item">
             <span class="icon"><i class="fas fa-procedures"></i></span>
             Ward Overview
         </a>
-
         <a href="#" class="nav-item">
             <span class="icon"><i class="fas fa-calendar-alt"></i></span>
             Schedule
         </a>
-
         <a href="{{ route('patients.create') }}" class="nav-item">
             <span class="icon"><i class="fas fa-user-plus"></i></span>
             Register Patient
         </a>
     </nav>
 
-    <!-- User footer -->
     <div class="sidebar-footer">
         <div class="sidebar-user">
             <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-9 h-9 rounded-full border-2 border-primary-500">
@@ -211,7 +197,7 @@
     </div>
 </aside>
 
-<!-- ══════════════════ MAIN CONTENT ══════════════════ -->
+<!-- MAIN CONTENT -->
 <div class="main-content">
 
     <!-- Top Bar -->
@@ -225,12 +211,14 @@
                 <p class="text-xs text-gray-400">{{ now()->format('l, d F Y') }} &nbsp;·&nbsp; Ward 3B</p>
             </div>
         </div>
+
         <div class="flex items-center gap-3">
             <!-- Search -->
             <div class="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-56">
                 <i class="fas fa-search text-gray-400 text-xs"></i>
                 <input type="text" placeholder="Search patient…" class="bg-transparent text-sm focus:outline-none w-full text-gray-600 placeholder-gray-400">
             </div>
+
             <!-- Alert bell -->
             <div class="relative">
                 <button class="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-primary-50 hover:text-primary-600 transition-colors">
@@ -238,15 +226,36 @@
                 </button>
                 <span class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">3</span>
             </div>
-            <!-- Avatar -->
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-9 h-9 rounded-full border-2 border-primary-200 cursor-pointer">
+
+            <!-- Avatar with logout dropdown -->
+            <div class="relative" id="avatarWrapper">
+                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User"
+                     id="avatarBtn"
+                     class="w-9 h-9 rounded-full border-2 border-primary-200 cursor-pointer">
+
+                <div id="avatarDropdown"
+                     class="hidden absolute right-0 top-12 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-50">
+                        <p class="text-sm font-semibold text-gray-800 truncate">{{ auth()->user()->name ?? 'Dr. Omondi' }}</p>
+                        <p class="text-xs text-gray-400 capitalize">{{ auth()->user()->role ?? 'Doctor' }}</p>
+                    </div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit"
+                                class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 font-semibold hover:bg-red-50 transition-colors">
+                            <i class="fas fa-sign-out-alt text-sm"></i>
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </header>
 
     <!-- Page Content -->
     <main class="p-6 space-y-6">
 
-        <!-- ── Critical Alert ── -->
+        <!-- Critical Alert -->
         <div class="alert-critical p-4 flex items-center gap-3">
             <div class="relative">
                 <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -261,7 +270,7 @@
             <a href="#" class="text-xs font-semibold text-red-700 border border-red-300 rounded-full px-3 py-1 hover:bg-red-50 transition-colors whitespace-nowrap">View Patient</a>
         </div>
 
-        <!-- ── Stat Cards ── -->
+        <!-- Stat Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             @foreach([
                 ['icon'=>'fa-procedures','label'=>'Admitted Today','val'=>'12','sub'=>'+3 since morning','color'=>'primary'],
@@ -272,18 +281,17 @@
                 <div class="stat-card card-glow">
                     <div class="flex items-start justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl
-                        @if($s['color']==='primary') bg-primary-100
-                        @elseif($s['color']==='yellow') bg-amber-100
-                        @elseif($s['color']==='red') bg-red-100
-                        @else bg-secondary-100
-                        @endif
-                        flex items-center justify-center">
+                            @if($s['color']==='primary') bg-primary-100
+                            @elseif($s['color']==='yellow') bg-amber-100
+                            @elseif($s['color']==='red') bg-red-100
+                            @else bg-secondary-100
+                            @endif flex items-center justify-center">
                             <i class="fas {{ $s['icon'] }} text-sm
-                            @if($s['color']==='primary') text-primary-600
-                            @elseif($s['color']==='yellow') text-amber-600
-                            @elseif($s['color']==='red') text-red-600
-                            @else text-secondary-600
-                            @endif"></i>
+                                @if($s['color']==='primary') text-primary-600
+                                @elseif($s['color']==='yellow') text-amber-600
+                                @elseif($s['color']==='red') text-red-600
+                                @else text-secondary-600
+                                @endif"></i>
                         </div>
                         <i class="fas fa-arrow-trend-up text-xs text-gray-300"></i>
                     </div>
@@ -294,7 +302,7 @@
             @endforeach
         </div>
 
-        <!-- ── Quick Actions ── -->
+        <!-- Quick Actions -->
         <div>
             <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Quick Actions</h2>
             <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
@@ -314,10 +322,9 @@
             </div>
         </div>
 
-        <!-- ── Patient Table + Sidebar ── -->
+        <!-- Patient Table + Right Column -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-            <!-- Patient Table -->
             <div class="xl:col-span-2 bg-white rounded-2xl border border-primary-100 overflow-hidden card-glow">
                 <div class="flex items-center justify-between p-5 border-b border-gray-50">
                     <div>
@@ -379,10 +386,10 @@
                 </div>
             </div>
 
-            <!-- Right column -->
+            <!-- Right Column -->
             <div class="space-y-4">
 
-                <!-- Vitals snapshot -->
+                <!-- Vitals -->
                 <div class="bg-white rounded-2xl border border-primary-100 p-5 card-glow">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold text-gray-800 text-sm">Vitals — Agnes Mwangi</h3>
@@ -401,10 +408,10 @@
                                     <p class="text-xs text-gray-400">{{ $v['label'] }}</p>
                                 </div>
                                 <p class="font-bold text-base
-                                @if($v['status']==='warn') text-amber-600
-                                @elseif($v['status']==='crit') text-red-600
-                                @else text-emerald-600
-                                @endif">
+                                    @if($v['status']==='warn') text-amber-600
+                                    @elseif($v['status']==='crit') text-red-600
+                                    @else text-emerald-600
+                                    @endif">
                                     {{ $v['val'] }}
                                     <span class="text-xs font-normal text-gray-400">{{ $v['unit'] }}</span>
                                 </p>
@@ -413,7 +420,7 @@
                     </div>
                 </div>
 
-                <!-- Recent activity -->
+                <!-- Recent Activity -->
                 <div class="bg-white rounded-2xl border border-primary-100 p-5 card-glow">
                     <h3 class="font-bold text-gray-800 text-sm mb-4">Recent Activity</h3>
                     <div>
@@ -436,7 +443,7 @@
             </div>
         </div>
 
-        <!-- ── Bed Occupancy Strip ── -->
+        <!-- Bed Occupancy -->
         <div class="bg-white rounded-2xl border border-primary-100 p-5 card-glow">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="font-bold text-gray-800">Ward 3B — Bed Occupancy</h2>
@@ -485,6 +492,18 @@
     overlay?.addEventListener('click', () => {
         sidebar.classList.remove('open');
         overlay.classList.remove('open');
+    });
+
+    // Avatar dropdown toggle
+    const avatarBtn = document.getElementById('avatarBtn');
+    const avatarDropdown = document.getElementById('avatarDropdown');
+
+    avatarBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        avatarDropdown.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => {
+        avatarDropdown?.classList.add('hidden');
     });
 </script>
 </body>

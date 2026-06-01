@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LabRequest;
 use App\Models\Patient;
 use App\Models\PatientNote;
 use App\Models\Prescription;
 use App\Models\StockItem;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-
+use App\Models\Bill;
+use App\Models\MortuaryRecord;
+use Illuminate\Support\Facades\DB;
 class PatientController extends Controller
 {
     // ── Dashboard ─────────────────────────────────────────────────────
@@ -27,7 +30,6 @@ class PatientController extends Controller
             ->take(8)
             ->get();
 
-        // ← Add this: patients admitted or updated today
         $todaysPatients = Patient::whereDate('admitted_at', today())
             ->orWhereDate('updated_at', today())
             ->latest()
@@ -50,6 +52,7 @@ class PatientController extends Controller
             'stats', 'recentPatients', 'todaysPatients', 'lowStock', 'statusCounts'
         ));
     }
+
     // ── Patient CRUD ──────────────────────────────────────────────────
 
     public function index(Request $request)
@@ -96,7 +99,13 @@ class PatientController extends Controller
 
     public function show(Patient $patient)
     {
-        $patient->load(['clinicalNotes.user', 'prescriptions.stockItem', 'prescriptions.prescribedBy']);
+        $patient->load([
+            'clinicalNotes.user',
+            'prescriptions.stockItem',
+            'prescriptions.prescribedBy',
+            'labRequests.requestedBy',
+        ]);
+
         return view('patients.show', compact('patient'));
     }
 
@@ -133,7 +142,7 @@ class PatientController extends Controller
         $patients = Patient::admitted()
             ->when($request->search, fn($q) => $q->search($request->search))
             ->when($request->status, fn($q) => $q->where('status', $request->status))
-            ->when($request->ward, fn($q) => $q->where('ward', $request->ward))
+            ->when($request->ward,   fn($q) => $q->where('ward', $request->ward))
             ->latest('admitted_at')
             ->paginate(12)
             ->withQueryString();
@@ -174,19 +183,58 @@ class PatientController extends Controller
             'discharge_condition' => 'required|in:recovered,improved,transferred,self-discharge,deceased',
             'discharge_notes'     => 'required|string',
             'followup_date'       => 'nullable|date|after:today',
+            'cause_of_death'      => 'required_if:discharge_condition,deceased|nullable|string',
+            'bed_rate_per_day'    => 'nullable|numeric|min:0',
         ]);
 
         $patient->update([
-            'status'               => 'discharged',
-            'discharge_condition'  => $validated['discharge_condition'],
-            'discharge_notes'      => $validated['discharge_notes'],
-            'followup_date'        => $validated['followup_date'] ?? null,
-            'discharged_at'        => now(),
+            'status'              => 'discharged',
+            'discharge_condition' => $validated['discharge_condition'],
+            'discharge_notes'     => $validated['discharge_notes'],
+            'followup_date'       => $validated['followup_date'] ?? null,
+            'discharged_at'       => now(),
+            'final_diagnosis'     => $validated['discharge_notes'],
         ]);
+
+        // ── Auto-calculate bill ────────────────────────────────────────────
+        $bedDays     = max(1, $patient->fresh()->days_admitted);
+        $bedRate     = $validated['bed_rate_per_day'] ?? 10000;
+        $bedTotal    = $bedDays * $bedRate;
+
+        $labTotal    = $patient->labRequests()->where('status', 'completed')->count() * 5000; // per test fee
+        $drugsTotal  = $patient->prescriptions()->sum(\DB::raw('COALESCE(quantity, 1)')) * 500; // per unit fee
+
+        $grandTotal  = $bedTotal + $labTotal + $drugsTotal;
+
+        Bill::create([
+            'patient_id'       => $patient->id,
+            'created_by'       => auth()->id(),
+            'bed_days'         => $bedDays,
+            'bed_rate_per_day' => $bedRate,
+            'bed_total'        => $bedTotal,
+            'lab_total'        => $labTotal,
+            'drugs_total'      => $drugsTotal,
+            'grand_total'      => $grandTotal,
+            'balance'          => $grandTotal,
+            'status'           => 'unpaid',
+        ]);
+
+        // ── If deceased → create mortuary record ───────────────────────────
+        if ($validated['discharge_condition'] === 'deceased') {
+            MortuaryRecord::create([
+                'patient_id'     => $patient->id,
+                'referred_by'    => auth()->id(),
+                'cause_of_death' => $validated['cause_of_death'] ?? null,
+                'notes'          => $validated['discharge_notes'],
+                'status'         => 'pending',
+            ]);
+        }
 
         return redirect()
             ->route('patients.discharge')
-            ->with('success', "{$patient->name} has been discharged successfully.");
+            ->with('success', $validated['discharge_condition'] === 'deceased'
+                ? "{$patient->name} has been discharged and mortuary has been notified."
+                : "{$patient->name} has been discharged. Bill generated for accountant.");
     }
 
     // ── Clinical Notes ────────────────────────────────────────────────
@@ -198,7 +246,7 @@ class PatientController extends Controller
             'type'    => 'nullable|in:progress,assessment,observation,procedure',
         ]);
 
-        $patient->clinicalNotes()->create([  // ← changed from notes()
+        $patient->clinicalNotes()->create([
             'content' => $validated['content'],
             'type'    => $validated['type'] ?? 'progress',
             'user_id' => auth()->id(),
@@ -229,13 +277,13 @@ class PatientController extends Controller
         }
 
         $patient->prescriptions()->create([
-            'stock_item_id'   => $validated['stock_item_id'],
-            'dosage'          => $validated['dosage'],
-            'frequency'       => $validated['frequency'],
-            'duration'        => $validated['duration'] ?? null,
-            'quantity'        => $validated['quantity'] ?? null,
-            'instructions'    => $validated['instructions'] ?? null,
-            'prescribed_by'   => auth()->id(),
+            'stock_item_id' => $validated['stock_item_id'],
+            'dosage'        => $validated['dosage'],
+            'frequency'     => $validated['frequency'],
+            'duration'      => $validated['duration'] ?? null,
+            'quantity'      => $validated['quantity'] ?? null,
+            'instructions'  => $validated['instructions'] ?? null,
+            'prescribed_by' => auth()->id(),
         ]);
 
         return redirect()

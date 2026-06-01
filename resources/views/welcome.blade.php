@@ -214,12 +214,6 @@
                     </a>
                 </div>
                 <div class="mt-8 flex items-center space-x-4">
-                    <div class="flex -space-x-2">
-                        <img src="https://randomuser.me/api/portraits/women/32.jpg" alt="Staff" class="w-10 h-10 rounded-full border-2 border-white">
-                        <img src="https://randomuser.me/api/portraits/men/44.jpg" alt="Staff" class="w-10 h-10 rounded-full border-2 border-white">
-                        <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Staff" class="w-10 h-10 rounded-full border-2 border-white">
-                        <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="Staff" class="w-10 h-10 rounded-full border-2 border-white">
-                    </div>
                     <div class="text-sm text-gray-600">
                         <span class="font-bold text-primary-600 counter" data-target="1200">0</span>+ hospital staff using MediCore
                     </div>

@@ -18,17 +18,11 @@ class AuthController extends Controller
     //  LOGIN
     // ─────────────────────────────────────────────
 
-    /**
-     * Show the login form.
-     */
     public function showLogin(): View
     {
         return view('auth.login');
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function login(Request $request): RedirectResponse
     {
         $request->validate([
@@ -36,7 +30,6 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        // Throttle: max 5 attempts per minute per email+IP
         $throttleKey = Str::lower($request->input('email')) . '|' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
@@ -59,7 +52,6 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-
         $request->session()->regenerate();
 
         return $this->redirectToDashboard();
@@ -69,23 +61,17 @@ class AuthController extends Controller
     //  REGISTER
     // ─────────────────────────────────────────────
 
-    /**
-     * Show the registration form.
-     */
     public function showRegister(): View
     {
         return view('auth.register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     */
     public function register(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'role'     => ['required', 'string', 'in:doctor,nurse,pharmacist,admin'],
+            'role'     => ['required', 'string', 'in:doctor,nurse,pharmacist,lab_attendant,admin'],
             'password' => [
                 'required',
                 'confirmed',
@@ -105,7 +91,6 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
-
         $request->session()->regenerate();
 
         return $this->redirectToDashboard();
@@ -115,18 +100,18 @@ class AuthController extends Controller
     //  DASHBOARD REDIRECT
     // ─────────────────────────────────────────────
 
-    /**
-     * Redirect the authenticated user to their role-appropriate dashboard.
-     */
     public function redirectToDashboard(): RedirectResponse
     {
         $role = Auth::user()->role;
 
         return match($role) {
-            'admin'                  => redirect()->route('admin.dashboard'),
-            'pharmacist'             => redirect()->route('pharmacy.index'),
-            'doctor', 'nurse'        => redirect()->route('medical.dashboard'),
-            default                  => redirect()->route('login'),
+            'admin'         => redirect()->route('admin.dashboard'),
+            'pharmacist'    => redirect()->route('pharmacy.index'),
+            'doctor','nurse'=> redirect()->route('medical.dashboard'),
+            'lab_attendant' => redirect()->route('lab.dashboard'),
+            'accountant'    => redirect()->route('billing.index'),
+            'mortuary'      => redirect()->route('mortuary.index'),
+            default         => redirect()->route('login'),
         };
     }
 
@@ -134,9 +119,6 @@ class AuthController extends Controller
     //  LOGOUT
     // ─────────────────────────────────────────────
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function logout(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

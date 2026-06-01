@@ -8,7 +8,57 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Patient clinical notes
+        /*
+        |---------------------------------------
+        | 1. STOCK ITEMS (PARENT TABLE)
+        |---------------------------------------
+        */
+        Schema::create('stock_items', function (Blueprint $table) {
+            $table->id();
+
+            // Core identification
+            $table->string('name');
+            $table->string('generic_name')->nullable();
+            $table->string('barcode')->nullable()->unique();
+            $table->string('sku')->nullable()->unique();
+
+            // Classification
+            $table->string('category')->default('Other');
+            $table->string('unit')->default('Tablet');
+
+            // Stock levels
+            $table->unsignedInteger('quantity')->default(0);
+            $table->unsignedInteger('reorder_level')->default(10);
+
+            // Pricing
+            $table->decimal('unit_price', 12, 2)->nullable();
+
+            // Supplier
+            $table->string('supplier_name')->nullable();
+            $table->string('supplier_contact')->nullable();
+
+            // Dates
+            $table->date('expiry_date')->nullable();
+            $table->date('manufacture_date')->nullable();
+
+            // Extra
+            $table->text('notes')->nullable();
+            $table->boolean('is_active')->default(true);
+
+            // Audit
+            $table->foreignId('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->timestamps();
+        });
+
+        /*
+        |---------------------------------------
+        | 2. PATIENT NOTES
+        |---------------------------------------
+        */
         Schema::create('patient_notes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
@@ -18,7 +68,11 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Prescriptions
+        /*
+        |---------------------------------------
+        | 3. PRESCRIPTIONS
+        |---------------------------------------
+        */
         Schema::create('prescriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
@@ -28,37 +82,44 @@ return new class extends Migration
             $table->string('frequency');
             $table->integer('duration_days')->nullable();
             $table->text('instructions')->nullable();
+
             $table->boolean('is_dispensed')->default(false);
             $table->timestamp('dispensed_at')->nullable();
-            $table->foreignId('dispensed_by')->nullable()->constrained('users')->nullOnDelete();
+
+            $table->foreignId('dispensed_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
             $table->timestamps();
         });
 
-        // Pharmacy / Stock
-        Schema::create('stock_items', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->enum('category', ['medicine', 'consumable', 'equipment'])->default('medicine');
-            $table->string('manufacturer')->nullable();
-            $table->integer('quantity')->default(0);
-            $table->string('unit')->default('tablets');
-            $table->integer('reorder_level')->default(10);
-            $table->date('expiry_date')->nullable();
-            $table->decimal('unit_price', 10, 2)->nullable();
-            $table->string('location')->nullable(); // e.g. shelf A3
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        // Stock movement log
+        /*
+        |---------------------------------------
+        | 4. STOCK MOVEMENTS (CHILD TABLE)
+        |---------------------------------------
+        */
         Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('stock_item_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('prescription_id')->nullable()->constrained()->nullOnDelete();
+
+            $table->foreignId('stock_item_id')
+                ->constrained('stock_items')
+                ->cascadeOnDelete();
+
+            $table->foreignId('user_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->foreignId('prescription_id')
+                ->nullable()
+                ->constrained('prescriptions')
+                ->nullOnDelete();
+
             $table->enum('type', ['in', 'out', 'adjustment', 'expired']);
             $table->integer('quantity');
             $table->text('notes')->nullable();
+
             $table->timestamps();
         });
     }
@@ -66,8 +127,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('stock_movements');
-        Schema::dropIfExists('stock_items');
         Schema::dropIfExists('prescriptions');
         Schema::dropIfExists('patient_notes');
+        Schema::dropIfExists('stock_items');
     }
 };

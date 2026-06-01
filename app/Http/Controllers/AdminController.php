@@ -10,16 +10,6 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware(function ($request, $next) {
-            if (auth()->user()?->role !== 'admin') {
-                abort(403, 'Unauthorized.');
-            }
-            return $next($request);
-        });
-    }
-
     public function dashboard()
     {
         $stats = [
@@ -27,8 +17,8 @@ class AdminController extends Controller
             'new_this_month'  => Patient::whereMonth('admitted_at', now()->month)->count(),
             'inpatients'      => Patient::admitted()->count(),
             'bed_occupancy'   => $this->bedOccupancyPercent(),
-            'doctors'         => User::where('role', 'doctor')->where('is_active', true)->count(),
-            'staff'           => User::where('is_active', true)->count(),
+            'doctors'         => User::where('role', 'doctor')->count(),
+            'staff'           => User::count(),
             'low_stock_items' => StockItem::lowStock()->count(),
         ];
 
@@ -77,7 +67,7 @@ class AdminController extends Controller
 
     private function bedOccupancyPercent(): int
     {
-        $total_beds = 105; // sum of all wards
+        $total_beds = 105;
         $occupied   = Patient::admitted()->count();
         return $total_beds > 0 ? round(($occupied / $total_beds) * 100) : 0;
     }
@@ -120,7 +110,6 @@ class AdminController extends Controller
             ];
         }
 
-        // Sort by most recent-ish and limit
         return array_slice($activity, 0, 8);
     }
 }
