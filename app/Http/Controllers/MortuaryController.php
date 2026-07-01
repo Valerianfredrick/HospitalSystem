@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bill;
 use App\Models\MortuaryRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +27,13 @@ class MortuaryController extends Controller
     public function show(MortuaryRecord $record)
     {
         $record->load(['patient', 'referredBy', 'receivedBy']);
-        return view('mortuary.show', compact('record'));
+
+        // Load the patient's latest bill
+        $bill = Bill::where('patient_id', $record->patient_id)
+            ->latest()
+            ->first();
+
+        return view('mortuary.show', compact('record', 'bill'));
     }
 
     public function receive(MortuaryRecord $record)
@@ -42,6 +49,19 @@ class MortuaryController extends Controller
 
     public function release(Request $request, MortuaryRecord $record)
     {
+        // Block release if there is an outstanding balance
+        $bill = Bill::where('patient_id', $record->patient_id)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->latest()
+            ->first();
+
+        if ($bill) {
+            return back()->with('error',
+                'Cannot release body. Patient has an outstanding balance of TZS ' .
+                number_format($bill->balance, 2) . '. Please settle the bill first.'
+            );
+        }
+
         $request->validate([
             'notes' => 'nullable|string',
         ]);

@@ -166,7 +166,7 @@
         </a>
 
         <p class="nav-section-label">Ward</p>
-        <a href="#" class="nav-item">
+        <a href="{{ route('wards.index') }}" class="nav-item">
             <span class="icon"><i class="fas fa-procedures"></i></span>
             Ward Overview
         </a>
@@ -182,7 +182,9 @@
 
     <div class="sidebar-footer">
         <div class="sidebar-user">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-9 h-9 rounded-full border-2 border-primary-500">
+            <div class="w-9 h-9 rounded-full border-2 border-primary-500 bg-primary-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {{ strtoupper(substr(auth()->user()->name ?? 'D', 0, 1)) }}
+            </div>
             <div class="flex-1 min-w-0">
                 <p class="text-white text-sm font-semibold truncate">{{ auth()->user()->name ?? 'Dr. Omondi' }}</p>
                 <p class="text-white/40 text-xs truncate capitalize">{{ auth()->user()->role ?? 'Doctor' }}</p>
@@ -208,7 +210,7 @@
             </button>
             <div>
                 <h1 class="font-bold text-gray-800 text-base leading-tight">Good morning, {{ auth()->user()->name ?? 'Doctor' }} 👋</h1>
-                <p class="text-xs text-gray-400">{{ now()->format('l, d F Y') }} &nbsp;·&nbsp; Ward 3B</p>
+                <p class="text-xs text-gray-400">{{ now()->format('l, d F Y') }}</p>
             </div>
         </div>
 
@@ -229,9 +231,10 @@
 
             <!-- Avatar with logout dropdown -->
             <div class="relative" id="avatarWrapper">
-                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User"
-                     id="avatarBtn"
-                     class="w-9 h-9 rounded-full border-2 border-primary-200 cursor-pointer">
+                <div id="avatarBtn"
+                     class="w-9 h-9 rounded-full border-2 border-primary-200 cursor-pointer bg-primary-600 flex items-center justify-center text-white text-xs font-bold">
+                    {{ strtoupper(substr(auth()->user()->name ?? 'D', 0, 1)) }}
+                </div>
 
                 <div id="avatarDropdown"
                      class="hidden absolute right-0 top-12 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
@@ -273,10 +276,10 @@
         <!-- Stat Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             @foreach([
-                ['icon'=>'fa-procedures','label'=>'Admitted Today','val'=>'12','sub'=>'+3 since morning','color'=>'primary'],
-                ['icon'=>'fa-user-clock','label'=>'Under Observation','val'=>'5','sub'=>'2 pending labs','color'=>'yellow'],
-                ['icon'=>'fa-heartbeat','label'=>'Critical Patients','val'=>'2','sub'=>'ICU ward','color'=>'red'],
-                ['icon'=>'fa-sign-out-alt','label'=>'Discharged Today','val'=>'4','sub'=>'Beds freed','color'=>'secondary'],
+                ['icon'=>'fa-procedures','label'=>'Admitted Today','val'=>$stats['admitted_today'],'sub'=>'New admissions','color'=>'primary'],
+                ['icon'=>'fa-user-clock','label'=>'Under Observation','val'=>$statusCounts['observation'],'sub'=>'Current inpatients','color'=>'yellow'],
+                ['icon'=>'fa-heartbeat','label'=>'Critical Patients','val'=>$statusCounts['critical'],'sub'=>'ICU ward','color'=>'red'],
+                ['icon'=>'fa-sign-out-alt','label'=>'Discharged Today','val'=>$stats['discharged_today'],'sub'=>'Beds freed','color'=>'secondary'],
             ] as $s)
                 <div class="stat-card card-glow">
                     <div class="flex items-start justify-between mb-3">
@@ -329,7 +332,7 @@
                 <div class="flex items-center justify-between p-5 border-b border-gray-50">
                     <div>
                         <h2 class="font-bold text-gray-800">Today's Patients</h2>
-                        <p class="text-xs text-gray-400 mt-0.5">Ward 3B · {{ now()->format('d M Y') }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ now()->format('d M Y') }}</p>
                     </div>
                     <a href="{{ route('patients.index') }}" class="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
                         View all <i class="fas fa-arrow-right text-xs"></i>
@@ -348,39 +351,47 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @foreach([
-                            ['initials'=>'AM','name'=>'Agnes Mwangi','bg'=>'bg-primary-100','text'=>'text-primary-700','mrn'=>'MRN-2024051','bed'=>'Bed 4','dx'=>'Hypertension','status'=>'admitted'],
-                            ['initials'=>'JK','name'=>'James Kimani','bg'=>'bg-secondary-100','text'=>'text-secondary-700','mrn'=>'MRN-2024052','bed'=>'Bed 7','dx'=>'Pneumonia','status'=>'observation'],
-                            ['initials'=>'FO','name'=>'Fatuma Omar','bg'=>'bg-red-100','text'=>'text-red-700','mrn'=>'MRN-2024053','bed'=>'ICU-2','dx'=>'Respiratory Fail.','status'=>'critical'],
-                            ['initials'=>'BN','name'=>'Brian Njoroge','bg'=>'bg-gray-100','text'=>'text-gray-600','mrn'=>'MRN-2024054','bed'=>'Bed 1','dx'=>'Appendectomy','status'=>'discharged'],
-                            ['initials'=>'SM','name'=>'Sarah Mutua','bg'=>'bg-purple-100','text'=>'text-purple-700','mrn'=>'MRN-2024055','bed'=>'Bed 11','dx'=>'Diabetes T2','status'=>'admitted'],
-                        ] as $p)
+                        {{-- REAL DATA: pulled from $todaysPatients (PatientController@dashboard) instead of the old hardcoded demo array --}}
+                        @forelse($todaysPatients as $p)
                             <tr>
                                 <td>
                                     <div class="flex items-center gap-2.5">
-                                        <div class="avatar-circle {{ $p['bg'] }} {{ $p['text'] }}">{{ $p['initials'] }}</div>
-                                        <span class="font-semibold text-gray-800">{{ $p['name'] }}</span>
+                                        <div class="avatar-circle bg-primary-100 text-primary-700">
+                                            {{ strtoupper(substr($p->name, 0, 1)) }}
+                                        </div>
+                                        <span class="font-semibold text-gray-800">{{ $p->name }}</span>
                                     </div>
                                 </td>
-                                <td class="text-gray-400 text-xs font-mono">{{ $p['mrn'] }}</td>
-                                <td class="font-medium text-gray-600">{{ $p['bed'] }}</td>
-                                <td class="text-gray-600 text-xs">{{ $p['dx'] }}</td>
+                                <td class="text-gray-400 text-xs font-mono">
+                                    {{ $p->mrn ?? 'MRN-' . str_pad($p->id, 7, '0', STR_PAD_LEFT) }}
+                                </td>
+                                <td class="font-medium text-gray-600">{{ $p->wardName ?? '—' }}</td>
+                                <td class="text-gray-600 text-xs">{{ $p->diagnosis ?? '—' }}</td>
                                 <td>
-                                    @if($p['status']==='admitted')
+                                    @if($p->status === 'admitted')
                                         <span class="badge badge-admitted"><span class="badge-dot bg-emerald-500"></span>Admitted</span>
-                                    @elseif($p['status']==='observation')
+                                    @elseif($p->status === 'observation')
                                         <span class="badge badge-observation"><span class="badge-dot bg-amber-500"></span>Obs.</span>
-                                    @elseif($p['status']==='critical')
+                                    @elseif($p->status === 'critical')
                                         <span class="badge badge-critical"><span class="badge-dot bg-red-500"></span>Critical</span>
-                                    @else
+                                    @elseif($p->status === 'discharged')
                                         <span class="badge badge-discharged"><span class="badge-dot bg-gray-400"></span>Discharged</span>
+                                    @else
+                                        <span class="badge badge-admitted"><span class="badge-dot bg-emerald-500"></span>{{ ucfirst($p->status) }}</span>
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="#" class="text-primary-600 hover:text-primary-700 font-semibold text-xs bg-primary-50 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors">View</a>
+                                    <a href="{{ route('patients.show', $p) }}" class="text-primary-600 hover:text-primary-700 font-semibold text-xs bg-primary-50 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors">View</a>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                                    <i class="fas fa-user-injured text-3xl mb-2 block opacity-20"></i>
+                                    No patients registered yet.
+                                </td>
+                            </tr>
+                        @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -390,34 +401,83 @@
             <div class="space-y-4">
 
                 <!-- Vitals -->
+                {{-- REAL DATA: now driven by $vitalsPatient (the most recently admitted
+                     patient, set in PatientController@dashboard) instead of a hardcoded
+                     "Agnes Mwangi" demo block. SpO2 has no column on patients, so that
+                     card was swapped for Weight. --}}
                 <div class="bg-white rounded-2xl border border-primary-100 p-5 card-glow">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-gray-800 text-sm">Vitals — Agnes Mwangi</h3>
-                        <span class="badge badge-admitted text-xs"><span class="badge-dot bg-emerald-500"></span>Live</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2.5">
-                        @foreach([
-                            ['label'=>'Blood Pressure','val'=>'142/88','unit'=>'mmHg','status'=>'warn','icon'=>'fa-heart'],
-                            ['label'=>'Temperature','val'=>'37.4','unit'=>'°C','status'=>'ok','icon'=>'fa-thermometer-half'],
-                            ['label'=>'SpO₂','val'=>'96','unit'=>'%','status'=>'ok','icon'=>'fa-lungs'],
-                            ['label'=>'Heart Rate','val'=>'78','unit'=>'bpm','status'=>'ok','icon'=>'fa-heartbeat'],
-                        ] as $v)
-                            <div class="vital-card">
-                                <div class="flex items-center gap-1 mb-1">
-                                    <i class="fas {{ $v['icon'] }} text-primary-300 text-xs"></i>
-                                    <p class="text-xs text-gray-400">{{ $v['label'] }}</p>
+                    @if($vitalsPatient)
+                        @php
+                            $bp = $vitalsPatient->blood_pressure;
+                            $bpStatus = 'ok';
+                            if ($bp && str_contains($bp, '/')) {
+                                [$sys, $dia] = array_map('intval', explode('/', $bp, 2));
+                                if ($sys >= 180 || $dia >= 120) {
+                                    $bpStatus = 'crit';
+                                } elseif ($sys >= 140 || $dia >= 90 || $sys < 90 || $dia < 60) {
+                                    $bpStatus = 'warn';
+                                }
+                            }
+
+                            $temp = $vitalsPatient->temperature;
+                            $tempStatus = 'ok';
+                            if ($temp !== null) {
+                                if ($temp >= 39.5 || $temp <= 35) {
+                                    $tempStatus = 'crit';
+                                } elseif ($temp >= 37.8 || $temp < 36) {
+                                    $tempStatus = 'warn';
+                                }
+                            }
+
+                            $pulse = $vitalsPatient->pulse;
+                            $pulseStatus = 'ok';
+                            if ($pulse !== null) {
+                                if ($pulse < 50 || $pulse > 120) {
+                                    $pulseStatus = 'crit';
+                                } elseif ($pulse < 60 || $pulse > 100) {
+                                    $pulseStatus = 'warn';
+                                }
+                            }
+
+                            $badgeMap = ['critical' => 'badge-critical', 'observation' => 'badge-observation'];
+                            $dotMap   = ['critical' => 'bg-red-500', 'observation' => 'bg-amber-500'];
+                            $vitalsBadgeClass = $badgeMap[$vitalsPatient->status] ?? 'badge-admitted';
+                            $vitalsDotClass   = $dotMap[$vitalsPatient->status] ?? 'bg-emerald-500';
+                        @endphp
+
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-gray-800 text-sm">Vitals — {{ $vitalsPatient->name }}</h3>
+                            <span class="badge {{ $vitalsBadgeClass }} text-xs">
+                                <span class="badge-dot {{ $vitalsDotClass }}"></span>Live
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            @foreach([
+                                ['label'=>'Blood Pressure','val'=>$bp ?? '—','unit'=>$bp ? 'mmHg' : '','status'=>$bpStatus,'icon'=>'fa-heart'],
+                                ['label'=>'Temperature','val'=>$temp ?? '—','unit'=>$temp !== null ? '°C' : '','status'=>$tempStatus,'icon'=>'fa-thermometer-half'],
+                                ['label'=>'Weight','val'=>$vitalsPatient->weight ?? '—','unit'=>$vitalsPatient->weight ? 'kg' : '','status'=>'ok','icon'=>'fa-weight-scale'],
+                                ['label'=>'Heart Rate','val'=>$pulse ?? '—','unit'=>$pulse !== null ? 'bpm' : '','status'=>$pulseStatus,'icon'=>'fa-heartbeat'],
+                            ] as $v)
+                                <div class="vital-card">
+                                    <div class="flex items-center gap-1 mb-1">
+                                        <i class="fas {{ $v['icon'] }} text-primary-300 text-xs"></i>
+                                        <p class="text-xs text-gray-400">{{ $v['label'] }}</p>
+                                    </div>
+                                    <p class="font-bold text-base
+                                        @if($v['status']==='warn') text-amber-600
+                                        @elseif($v['status']==='crit') text-red-600
+                                        @else text-emerald-600
+                                        @endif">
+                                        {{ $v['val'] }}
+                                        <span class="text-xs font-normal text-gray-400">{{ $v['unit'] }}</span>
+                                    </p>
                                 </div>
-                                <p class="font-bold text-base
-                                    @if($v['status']==='warn') text-amber-600
-                                    @elseif($v['status']==='crit') text-red-600
-                                    @else text-emerald-600
-                                    @endif">
-                                    {{ $v['val'] }}
-                                    <span class="text-xs font-normal text-gray-400">{{ $v['unit'] }}</span>
-                                </p>
-                            </div>
-                        @endforeach
-                    </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <h3 class="font-bold text-gray-800 text-sm mb-2">Vitals</h3>
+                        <p class="text-xs text-gray-400 text-center py-6">No admitted patients to show vitals for.</p>
+                    @endif
                 </div>
 
                 <!-- Recent Activity -->
@@ -446,33 +506,45 @@
         <!-- Bed Occupancy -->
         <div class="bg-white rounded-2xl border border-primary-100 p-5 card-glow">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="font-bold text-gray-800">Ward 3B — Bed Occupancy</h2>
-                <span class="text-xs text-gray-400">12 / 16 beds occupied</span>
+                <h2 class="font-bold text-gray-800">Bed Occupancy</h2>
+                <a href="{{ route('wards.index') }}" class="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                    View all wards <i class="fas fa-arrow-right text-xs"></i>
+                </a>
             </div>
-            <div class="grid grid-cols-8 sm:grid-cols-16 gap-2">
-                @for($i = 1; $i <= 16; $i++)
-                    @php
-                        $occupiedBeds = [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 14, 15];
-                        $criticalBeds = [3];
-                        $occupied = in_array($i, $occupiedBeds);
-                        $critical = in_array($i, $criticalBeds);
-                    @endphp
-                    <div class="flex flex-col items-center gap-1">
-                        <div class="w-full aspect-square rounded-lg flex items-center justify-center text-xs font-bold
-                            @if($critical) bg-red-100 text-red-600 border-2 border-red-300
-                            @elseif($occupied) bg-primary-100 text-primary-700 border border-primary-200
-                            @else bg-gray-50 text-gray-300 border border-gray-100
-                            @endif">
-                            <i class="fas fa-bed text-sm"></i>
+
+            @forelse($wards as $ward)
+                @php
+                    $wardTotal = $ward->beds->count();
+                    $wardAvailable = $ward->beds->where('status', 'available')->count();
+                @endphp
+                @if($wardTotal > 0)
+                    <div class="mb-5 last:mb-0">
+                        <p class="text-xs font-semibold text-gray-600 mb-2">{{ $ward->name }}</p>
+                        <div class="grid grid-cols-8 sm:grid-cols-16 gap-2">
+                            @foreach($ward->beds->sortBy('bed_number') as $bed)
+                                <div class="flex flex-col items-center gap-1">
+                                    <div class="w-full aspect-square rounded-lg flex items-center justify-center text-xs font-bold
+                                        @if($bed->status === 'occupied') bg-primary-100 text-primary-700 border border-primary-200
+                                        @elseif($bed->status === 'maintenance') bg-amber-100 text-amber-600 border-2 border-amber-300
+                                        @else bg-gray-50 text-gray-300 border border-gray-100
+                                        @endif">
+                                        <i class="fas fa-bed text-sm"></i>
+                                    </div>
+                                    <span class="text-[10px] text-gray-400">{{ $bed->bed_number }}</span>
+                                </div>
+                            @endforeach
                         </div>
-                        <span class="text-[10px] text-gray-400">{{ $i }}</span>
+                        <p class="text-[11px] text-gray-400 mt-2">{{ $wardAvailable }} of {{ $wardTotal }} beds available</p>
                     </div>
-                @endfor
-            </div>
-            <div class="flex items-center gap-5 mt-4 text-xs text-gray-500">
+                @endif
+            @empty
+                <p class="text-xs text-gray-400">No wards have been set up yet.</p>
+            @endforelse
+
+            <div class="flex items-center gap-5 mt-2 text-xs text-gray-500">
                 <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-primary-100 border border-primary-200 inline-block"></span> Occupied</span>
-                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-red-100 border-2 border-red-300 inline-block"></span> Critical</span>
-                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-50 border border-gray-100 inline-block"></span> Available (4)</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-100 border-2 border-amber-300 inline-block"></span> Maintenance</span>
+                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-gray-50 border border-gray-100 inline-block"></span> Available</span>
             </div>
         </div>
 

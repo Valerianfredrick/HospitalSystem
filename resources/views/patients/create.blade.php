@@ -55,6 +55,7 @@
         <a href="#" class="nav-item"><span class="icon"><i class="fas fa-notes-medical"></i></span> Clinical Notes</a>
         <a href="#" class="nav-item"><span class="icon"><i class="fas fa-file-prescription"></i></span> Prescriptions</a>
         <p class="nav-section-label">Ward</p>
+        <a href="{{ route('wards.index') }}" class="nav-item"><span class="icon"><i class="fas fa-procedures"></i></span> Ward Overview</a>
         <a href="{{ route('patients.create') }}" class="nav-item active"><span class="icon"><i class="fas fa-user-plus"></i></span> Register Patient</a>
     </nav>
     <div style="padding: 1rem 0.75rem; border-top: 1px solid rgba(255,255,255,0.07);">
@@ -94,6 +95,12 @@
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                <i class="fas fa-exclamation-circle mr-1"></i> {{ session('error') }}
             </div>
         @endif
 
@@ -157,13 +164,27 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 mb-1">Ward</label>
-                            <select name="ward" class="input-field">
+                            <select id="wardSelect" class="input-field">
                                 <option value="">Select ward</option>
-                                @foreach(['General','ICU','Pediatric','Maternity','Surgical'] as $ward)
-                                    <option value="{{ $ward }}" {{ old('ward')===$ward ? 'selected' : '' }}>{{ $ward }}</option>
+                                @foreach($wards as $ward)
+                                    @php $freeCount = $ward->beds->where('status', 'available')->count(); @endphp
+                                    <option value="{{ $ward->id }}" {{ $freeCount === 0 ? 'disabled' : '' }}>
+                                        {{ $ward->name }} ({{ $freeCount }} bed{{ $freeCount === 1 ? '' : 's' }} free)
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Bed</label>
+                            <select name="bed_id" id="bedSelect" class="input-field" disabled>
+                                <option value="">Select ward first</option>
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1">
+                                Optional — leave unassigned if no bed is ready yet. You can assign one later from Ward Overview.
+                            </p>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 mb-1">Admission Status</label>
                             <select name="status" class="input-field">
@@ -196,6 +217,45 @@
         </form>
     </main>
 </div>
+
+<script>
+    // Ward -> Bed cascading dropdown. Bed data is embedded server-side
+    // (no extra AJAX round-trip needed since the ward list is small).
+    const wardsData = {
+        @foreach($wards as $ward)
+        "{{ $ward->id }}": [
+                @foreach($ward->beds->where('status', 'available') as $bed)
+            { id: {{ $bed->id }}, number: "{{ $bed->bed_number }}" },
+            @endforeach
+        ],
+        @endforeach
+    };
+
+    const wardSelect = document.getElementById('wardSelect');
+    const bedSelect = document.getElementById('bedSelect');
+
+    wardSelect.addEventListener('change', () => {
+        const beds = wardsData[wardSelect.value] || [];
+
+        bedSelect.innerHTML = '';
+
+        if (!wardSelect.value) {
+            bedSelect.innerHTML = '<option value="">Select ward first</option>';
+            bedSelect.disabled = true;
+            return;
+        }
+
+        if (beds.length === 0) {
+            bedSelect.innerHTML = '<option value="">No free beds in this ward</option>';
+            bedSelect.disabled = true;
+            return;
+        }
+
+        bedSelect.disabled = false;
+        bedSelect.innerHTML = '<option value="">Select bed (optional)</option>' +
+            beds.map(b => `<option value="${b.id}">Bed ${b.number}</option>`).join('');
+    });
+</script>
 
 </body>
 </html>

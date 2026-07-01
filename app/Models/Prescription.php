@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Prescription extends Model
 {
     protected $fillable = [
-        'patient_id', 'doctor_id', 'medication_name', 'dosage',
+        'patient_id', 'doctor_id', 'stock_item_id', 'medication_name', 'dosage',
         'frequency', 'duration_days', 'instructions',
         'is_dispensed', 'dispensed_at', 'dispensed_by',
     ];
@@ -27,7 +27,6 @@ class Prescription extends Model
         return $this->belongsTo(User::class, 'doctor_id');
     }
 
-    // ✅ Alias so blade $rx->prescribedBy->name works
     public function prescribedBy()
     {
         return $this->belongsTo(User::class, 'doctor_id');
@@ -36,5 +35,10 @@ class Prescription extends Model
     public function dispensedBy()
     {
         return $this->belongsTo(User::class, 'dispensed_by');
+    }
+
+    public function stockItem()
+    {
+        return $this->belongsTo(StockItem::class);
     }
 }

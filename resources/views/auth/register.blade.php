@@ -140,15 +140,16 @@
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">I am a:</label>
 
-                            {{-- First row: Doctor, Nurse, Pharmacist --}}
+                            {{-- Row 1: Doctor, Nurse, Receptionist --}}
                             <div class="grid grid-cols-3 gap-3 mb-3">
                                 @foreach([
-                                    ['val' => 'doctor',     'label' => 'Doctor',     'icon' => 'fa-user-md'],
-                                    ['val' => 'nurse',      'label' => 'Nurse',      'icon' => 'fa-user-nurse'],
-                                    ['val' => 'pharmacist', 'label' => 'Pharmacist', 'icon' => 'fa-pills'],
+                                    ['val' => 'doctor',       'label' => 'Doctor',       'icon' => 'fa-user-md'],
+                                    ['val' => 'nurse',        'label' => 'Nurse',        'icon' => 'fa-user-nurse'],
+                                    ['val' => 'receptionist', 'label' => 'Receptionist', 'icon' => 'fa-bell-concierge'],
                                 ] as $r)
                                     <div class="role-option">
                                         <input type="radio" id="role_{{ $r['val'] }}" name="role" value="{{ $r['val'] }}"
+                                               data-needs-specialty="{{ $r['val'] === 'doctor' ? '1' : '0' }}"
                                             {{ old('role', 'doctor') === $r['val'] ? 'checked' : '' }}>
                                         <label for="role_{{ $r['val'] }}">
                                             <i class="fas {{ $r['icon'] }}"></i>
@@ -158,23 +159,67 @@
                                 @endforeach
                             </div>
 
-                            {{-- Second row: Lab Attendant (centered) --}}
+                            {{-- Row 2: Pharmacist, Lab Attendant, Accountant --}}
+                            <div class="grid grid-cols-3 gap-3 mb-3">
+                                @foreach([
+                                    ['val' => 'pharmacist',     'label' => 'Pharmacist',     'icon' => 'fa-pills'],
+                                    ['val' => 'lab_attendant',  'label' => 'Lab Attendant',  'icon' => 'fa-flask'],
+                                    ['val' => 'accountant',     'label' => 'Accountant',     'icon' => 'fa-calculator'],
+                                ] as $r)
+                                    <div class="role-option">
+                                        <input type="radio" id="role_{{ $r['val'] }}" name="role" value="{{ $r['val'] }}"
+                                               data-needs-specialty="0"
+                                            {{ old('role') === $r['val'] ? 'checked' : '' }}>
+                                        <label for="role_{{ $r['val'] }}">
+                                            <i class="fas {{ $r['icon'] }}"></i>
+                                            {{ $r['label'] }}
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Row 3: Mortuary Attendant (alone, matching grid) --}}
                             <div class="grid grid-cols-3 gap-3">
-                                <div></div>{{-- spacer --}}
                                 <div class="role-option">
-                                    <input type="radio" id="role_lab_attendant" name="role" value="lab_attendant"
-                                        {{ old('role') === 'lab_attendant' ? 'checked' : '' }}>
-                                    <label for="role_lab_attendant">
-                                        <i class="fas fa-flask"></i>
-                                        Lab Attendant
+                                    <input type="radio" id="role_mortuary_attendant" name="role" value="mortuary_attendant"
+                                           data-needs-specialty="0"
+                                        {{ old('role') === 'mortuary_attendant' ? 'checked' : '' }}>
+                                    <label for="role_mortuary_attendant">
+                                        <i class="fas fa-bed"></i>
+                                        Mortuary Attendant
                                     </label>
                                 </div>
-                                <div></div>{{-- spacer --}}
                             </div>
 
                             @error('role')
                             <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                             @enderror
+                        </div>
+
+                        {{--
+                            SPECIALTY SELECTOR (doctors only)
+                            Shown/hidden by JS based on the role selected above.
+                            Determines which patients get auto-routed to this doctor.
+                        --}}
+                        <div id="specialty-wrapper" class="{{ old('role', 'doctor') === 'doctor' ? '' : 'hidden' }}">
+                            <label for="specialty" class="block text-sm font-medium text-gray-700 mb-1">
+                                Medical specialty
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"><i class="fas fa-stethoscope"></i></span>
+                                <select id="specialty" name="specialty"
+                                        class="form-input w-full pl-9 pr-4 py-2.5 border {{ $errors->has('specialty') ? 'border-red-400' : 'border-gray-300' }} rounded-xl text-sm bg-white/70">
+                                    @foreach (\App\Services\TriageService::labels() as $value => $label)
+                                        <option value="{{ $value }}" {{ old('specialty', 'general') === $value ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-400">
+                                Patients are automatically routed to a doctor with a matching specialty.
+                            </p>
+                            @error('specialty')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="flex items-center gap-3">
@@ -292,6 +337,19 @@
         input.type = isText ? 'password' : 'text';
         btn.querySelector('i').className = isText ? 'fas fa-eye' : 'fas fa-eye-slash';
     }
+
+    // Show the specialty dropdown only when "Doctor" is selected.
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const specialtyWrapper = document.getElementById('specialty-wrapper');
+
+    function syncSpecialtyVisibility() {
+        const checked = document.querySelector('input[name="role"]:checked');
+        const needsSpecialty = checked && checked.dataset.needsSpecialty === '1';
+        specialtyWrapper.classList.toggle('hidden', !needsSpecialty);
+    }
+
+    roleRadios.forEach(r => r.addEventListener('change', syncSpecialtyVisibility));
+    syncSpecialtyVisibility();
 </script>
 </body>
 </html>

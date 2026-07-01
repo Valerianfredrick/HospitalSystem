@@ -3,113 +3,115 @@
 namespace App\Http\Controllers;
 
 use App\Models\Patient;
+use App\Models\Prescription;
 use App\Models\StockItem;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AdminController extends Controller
 {
+    /**
+     * Roles an admin can assign — both when creating a new account and
+     * when changing an existing user's role. 'admin' is included here
+     * deliberately: self-registration excludes it (see AuthController),
+     * so this panel is the intended channel for granting admin access.
+     */
+    private const ROLES = [
+        'admin', 'doctor', 'nurse', 'pharmacist',
+        'lab_attendant', 'accountant', 'mortuary_attendant',
+    ];
+
     public function dashboard()
     {
-        $stats = [
-            'total_patients'  => Patient::count(),
-            'new_this_month'  => Patient::whereMonth('admitted_at', now()->month)->count(),
-            'inpatients'      => Patient::admitted()->count(),
-            'bed_occupancy'   => $this->bedOccupancyPercent(),
-            'doctors'         => User::where('role', 'doctor')->count(),
-            'staff'           => User::count(),
-            'low_stock_items' => StockItem::lowStock()->count(),
-        ];
+        $totalUsers    = User::count();
+        $doctors       = User::where('role', 'doctor')->count();
+        $totalPatients = Patient::count();
+        $stockItems    = StockItem::count();
 
-        $daily_flow = Patient::selectRaw('DATE(admitted_at) as date, COUNT(*) as admitted')
-            ->whereDate('admitted_at', '>=', now()->subDays(6))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->map(function ($row) {
-                $row->discharged = Patient::whereDate('discharged_at', $row->date)->count();
-                return $row;
-            });
+        // Preview list for the dashboard table — full management lives on
+        // the dedicated admin.users page (see users() below).
+        $users = User::withCount('patients')
+            ->orderBy('role')
+            ->orderBy('name')
+            ->take(10)
+            ->get();
 
-        $max_daily = max(
-            $daily_flow->max('admitted') ?? 1,
-            $daily_flow->max('discharged') ?? 1
-        );
-
-        $ward_stats = collect([
-            (object)['name' => 'General',   'capacity' => 40, 'occupied' => Patient::admitted()->where('ward', 'General')->count()],
-            (object)['name' => 'ICU',       'capacity' => 10, 'occupied' => Patient::admitted()->where('ward', 'ICU')->count()],
-            (object)['name' => 'Pediatric', 'capacity' => 20, 'occupied' => Patient::admitted()->where('ward', 'Pediatric')->count()],
-            (object)['name' => 'Maternity', 'capacity' => 15, 'occupied' => Patient::admitted()->where('ward', 'Maternity')->count()],
-            (object)['name' => 'Surgical',  'capacity' => 20, 'occupied' => Patient::admitted()->where('ward', 'Surgical')->count()],
-        ]);
-
-        $critical_stock = StockItem::where(function ($q) {
-            $q->lowStock()->orWhere(function ($q2) {
-                $q2->expiringSoon(30);
-            });
-        })->orderBy('quantity')->take(8)->get();
-
-        $recent_activity = $this->getRecentActivity();
+        $todayAdmissions    = Patient::whereDate('admitted_at', today())->count();
+        $todayDischarges    = Patient::whereDate('discharged_at', today())->count();
+        $todayPrescriptions = Prescription::whereDate('created_at', today())->count();
+        $todayDispensed     = Prescription::where('is_dispensed', true)
+            ->whereDate('dispensed_at', today())
+            ->count();
 
         return view('admin.dashboard', compact(
-            'stats', 'daily_flow', 'max_daily',
-            'ward_stats', 'critical_stock', 'recent_activity'
+            'totalUsers', 'doctors', 'totalPatients', 'stockItems', 'users',
+            'todayAdmissions', 'todayDischarges', 'todayPrescriptions', 'todayDispensed'
         ));
     }
 
-    public function users()
+    public function users(Request $request)
     {
-        $users = User::orderBy('role')->orderBy('name')->paginate(20);
-        return view('admin.users', compact('users'));
+        $users = User::withCount('patients')
+            ->when($request->search, function ($q) use ($request) {
+                $term = $request->search;
+                $q->where(function ($q2) use ($term) {
+                    $q2->where('name', 'like', "%{$term}%")
+                        ->orWhere('email', 'like', "%{$term}%");
+                });
+            })
+            ->when($request->role, fn($q) => $q->where('role', $request->role))
+            ->orderBy('role')
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+
+        $roles = self::ROLES;
+
+        return view('admin.users', compact('users', 'roles'));
     }
 
-    private function bedOccupancyPercent(): int
+    public function createUser(Request $request)
     {
-        $total_beds = 105;
-        $occupied   = Patient::admitted()->count();
-        return $total_beds > 0 ? round(($occupied / $total_beds) * 100) : 0;
+        $validated = $request->validate([
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'role'     => ['required', 'string', 'in:' . implode(',', self::ROLES)],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)->letters()->mixedCase()->numbers()->uncompromised(),
+            ],
+        ]);
+
+        User::create([
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'role'     => $validated['role'],
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', "User \"{$validated['name']}\" created successfully.");
     }
 
-    private function getRecentActivity(): array
+    public function updateRole(Request $request, User $user)
     {
-        $activity = [];
+        $validated = $request->validate([
+            'role' => ['required', 'string', 'in:' . implode(',', self::ROLES)],
+        ]);
 
-        $recent_admissions = Patient::whereDate('admitted_at', today())
-            ->latest('admitted_at')->take(3)->get();
-
-        foreach ($recent_admissions as $p) {
-            $activity[] = [
-                'message' => "{$p->name} admitted to {$p->ward} ward",
-                'time'    => Carbon::parse($p->admitted_at)->diffForHumans(),
-                'icon'    => 'fa-user-plus',
-                'color'   => 'bg-blue-500',
-            ];
+        if ($user->id === $request->user()->id) {
+            return back()->with('error', 'You cannot change your own role.');
         }
 
-        $recent_discharges = Patient::whereDate('discharged_at', today())
-            ->latest('discharged_at')->take(2)->get();
+        $user->update(['role' => $validated['role']]);
 
-        foreach ($recent_discharges as $p) {
-            $activity[] = [
-                'message' => "{$p->name} discharged ({$p->discharge_condition})",
-                'time'    => Carbon::parse($p->discharged_at)->diffForHumans(),
-                'icon'    => 'fa-sign-out-alt',
-                'color'   => 'bg-green-500',
-            ];
-        }
-
-        $low_stock = StockItem::lowStock()->take(2)->get();
-        foreach ($low_stock as $s) {
-            $activity[] = [
-                'message' => "Low stock alert: {$s->name} ({$s->quantity} {$s->unit})",
-                'time'    => 'Stock alert',
-                'icon'    => 'fa-exclamation-triangle',
-                'color'   => 'bg-red-500',
-            ];
-        }
-
-        return array_slice($activity, 0, 8);
+        return back()->with(
+            'success',
+            "{$user->name}'s role was updated to " . ucwords(str_replace('_', ' ', $validated['role'])) . '.'
+        );
     }
 }

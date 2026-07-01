@@ -36,17 +36,88 @@
         .badge-discharged { background: #f3f4f6; color: #374151; }
         .badge-stable { background: #dbeafe; color: #1e40af; }
         .badge-recovering { background: #d1fae5; color: #065f46; }
+        .badge-deceased { background: #1f2937; color: #e5e7eb; }
         .patient-table { width: 100%; border-collapse: collapse; }
         .patient-table th { background: #f5f3ff; color: #6d28d9; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.85rem 1rem; text-align: left; font-weight: 700; }
         .patient-table th:first-child { border-radius: 10px 0 0 10px; }
         .patient-table th:last-child { border-radius: 0 10px 10px 0; }
         .patient-table td { padding: 0.9rem 1rem; border-bottom: 1px solid #f5f3ff; font-size: 0.84rem; color: #374151; vertical-align: middle; }
         .patient-table tr:last-child td { border-bottom: none; }
-        .patient-table tr:hover td { background: #fdfcff; cursor: pointer; }
+        .patient-table tr:hover td { background: #fdfcff; }
+        .patient-table tr.deceased-row td { background: #f9fafb; }
+        .patient-table tr.deceased-row:hover td { background: #f3f4f6; }
         .avatar-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+
+        /* Mortuary modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-backdrop.hidden { display: none; }
+        .modal-box { background: white; border-radius: 1.25rem; width: 100%; max-width: 460px; padding: 2rem; box-shadow: 0 25px 50px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
+
+{{-- ── Mortuary Transfer Modal ────────────────────────────────────── --}}
+<div class="modal-backdrop hidden" id="mortuaryModal">
+    <div class="modal-box">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-cross text-gray-600 text-lg"></i>
+            </div>
+            <div>
+                <h2 class="font-bold text-gray-800 text-base">Transfer to Mortuary</h2>
+                <p class="text-xs text-gray-400" id="modalPatientName">—</p>
+            </div>
+        </div>
+
+        <form method="POST" id="mortuaryForm" class="space-y-4">
+            @csrf
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Time of Death <span class="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" name="time_of_death" required
+                       class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-purple-400">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Cause of Death <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="cause_of_death" required
+                       placeholder="e.g. Cardiac arrest, Sepsis…"
+                       class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-purple-400">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Body Tag / Reference No. <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="body_tag" required
+                       placeholder="e.g. MTY-2024-001"
+                       class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-purple-400">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1.5">Notes (optional)</label>
+                <textarea name="notes" rows="2"
+                          placeholder="Any additional notes for mortuary staff…"
+                          class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-purple-400 resize-none"></textarea>
+            </div>
+
+            <div class="flex gap-3 pt-1">
+                <button type="button" onclick="closeMortuaryModal()"
+                        class="flex-1 py-2.5 text-sm font-semibold text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 text-sm font-semibold text-white rounded-xl bg-gray-800 hover:bg-gray-900 transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i> Confirm Transfer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <aside class="sidebar">
     <div style="padding: 1.5rem 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.07);">
@@ -106,6 +177,12 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+                <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+            </div>
+        @endif
+
         <!-- Filters -->
         <div class="bg-white rounded-2xl border border-primary-100 p-4 mb-5 flex flex-wrap gap-3 items-center">
             <form method="GET" action="{{ route('patients.index') }}" class="flex flex-wrap gap-3 flex-1">
@@ -118,7 +195,7 @@
                 <select name="status" onchange="this.form.submit()"
                         class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-primary-400 bg-white">
                     <option value="">All Statuses</option>
-                    @foreach(['admitted','observation','critical','stable','recovering','discharged'] as $s)
+                    @foreach(['admitted','observation','critical','stable','recovering','discharged','deceased'] as $s)
                         <option value="{{ $s }}" {{ request('status') === $s ? 'selected' : '' }}>
                             {{ ucfirst($s) }}
                         </option>
@@ -150,19 +227,25 @@
                             <th>Diagnosis</th>
                             <th>Admitted</th>
                             <th>Status</th>
-                            <th>Action</th>
+                            <th>Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         @foreach($patients as $patient)
-                            <tr onclick="window.location='{{ route('patients.show', $patient) }}'" style="cursor:pointer;">
+                            @php $isDeceased = $patient->status === 'deceased'; @endphp
+                            <tr onclick="window.location='{{ route('patients.show', $patient) }}'"
+                                style="cursor:pointer;"
+                                class="{{ $isDeceased ? 'deceased-row' : '' }}">
+
                                 <td>
                                     <div class="flex items-center gap-2.5">
-                                        <div class="avatar-circle bg-primary-100 text-primary-700">
+                                        <div class="avatar-circle {{ $isDeceased ? 'bg-gray-200 text-gray-500' : 'bg-primary-100 text-primary-700' }}">
                                             {{ strtoupper(substr($patient->name, 0, 1)) }}{{ strtoupper(substr(strstr($patient->name, ' '), 1, 1)) }}
                                         </div>
                                         <div>
-                                            <p class="font-semibold text-gray-800">{{ $patient->name }}</p>
+                                            <p class="font-semibold {{ $isDeceased ? 'text-gray-400' : 'text-gray-800' }}">
+                                                {{ $patient->name }}
+                                            </p>
                                             <p class="text-xs text-gray-400">#{{ $patient->id }}</p>
                                         </div>
                                     </div>
@@ -178,19 +261,48 @@
                                 <td>
                                     @php $st = $patient->status; @endphp
                                     <span class="badge badge-{{ $st }}">
-                                            <span class="w-1.5 h-1.5 rounded-full inline-block
-                                                @if($st==='admitted'||$st==='stable'||$st==='recovering') bg-emerald-500
-                                                @elseif($st==='critical') bg-red-500
-                                                @elseif($st==='observation') bg-amber-500
-                                                @else bg-gray-400 @endif"></span>
-                                            {{ ucfirst($st) }}
-                                        </span>
+                                        <span class="w-1.5 h-1.5 rounded-full inline-block
+                                            @if($st==='admitted'||$st==='stable'||$st==='recovering') bg-emerald-500
+                                            @elseif($st==='critical') bg-red-500
+                                            @elseif($st==='observation') bg-amber-500
+                                            @elseif($st==='deceased') bg-gray-500
+                                            @else bg-gray-400 @endif"></span>
+                                        {{ ucfirst($st) }}
+                                    </span>
                                 </td>
+
+                                {{-- Actions column --}}
                                 <td onclick="event.stopPropagation()">
-                                    <a href="{{ route('patients.show', $patient) }}"
-                                       class="text-primary-600 hover:text-primary-700 font-semibold text-xs bg-primary-50 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors">
-                                        View
-                                    </a>
+                                    <div class="flex items-center gap-2">
+
+                                        {{-- View --}}
+                                        <a href="{{ route('patients.show', $patient) }}"
+                                           class="text-primary-600 hover:text-primary-700 font-semibold text-xs bg-primary-50 px-3 py-1 rounded-full hover:bg-primary-100 transition-colors">
+                                            View
+                                        </a>
+
+                                        @if(!in_array($patient->status, ['discharged', 'deceased']))
+
+                                            {{-- Discharge --}}
+                                            <a href="{{ route('patients.discharge.form', $patient) }}"
+                                               class="text-emerald-600 hover:text-emerald-700 font-semibold text-xs bg-emerald-50 px-3 py-1 rounded-full hover:bg-emerald-100 transition-colors">
+                                                Discharge
+                                            </a>
+
+                                            {{-- Mortuary transfer --}}
+                                            <button type="button"
+                                                    onclick="openMortuaryModal({{ $patient->id }}, '{{ addslashes($patient->name) }}')"
+                                                    class="text-gray-600 hover:text-gray-800 font-semibold text-xs bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors flex items-center gap-1">
+                                                <i class="fas fa-cross text-xs"></i> Mortuary
+                                            </button>
+
+                                        @elseif($patient->status === 'deceased')
+                                            <span class="text-xs text-gray-400 italic">In mortuary</span>
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">Discharged</span>
+                                        @endif
+
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -243,5 +355,34 @@
     </main>
 </div>
 
+<script>
+    function openMortuaryModal(patientId, patientName) {
+        document.getElementById('modalPatientName').textContent = patientName;
+        document.getElementById('mortuaryForm').action = `/patients/${patientId}/mortuary`;
+
+        // Default time of death to now
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.querySelector('[name="time_of_death"]').value = now.toISOString().slice(0, 16);
+
+        document.getElementById('mortuaryModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMortuaryModal() {
+        document.getElementById('mortuaryModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // Close on backdrop click
+    document.getElementById('mortuaryModal').addEventListener('click', function (e) {
+        if (e.target === this) closeMortuaryModal();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeMortuaryModal();
+    });
+</script>
 </body>
 </html>

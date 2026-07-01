@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\TriageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -71,7 +72,20 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'role'     => ['required', 'string', 'in:doctor,nurse,pharmacist,lab_attendant,admin'],
+            'role'     => [
+                'required',
+                'string',
+                'in:doctor,nurse,pharmacist,lab_attendant,accountant,mortuary_attendant,receptionist',
+                // admin is intentionally excluded — created via seeder/DB only
+            ],
+            'specialty' => [
+                // Only required when registering as a doctor — used to
+                // auto-route patients to the right specialist later.
+                'required_if:role,doctor',
+                'nullable',
+                'string',
+                'in:' . implode(',', array_keys(TriageService::labels())),
+            ],
             'password' => [
                 'required',
                 'confirmed',
@@ -84,10 +98,11 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'role'     => $validated['role'],
-            'password' => Hash::make($validated['password']),
+            'name'      => $validated['name'],
+            'email'     => $validated['email'],
+            'role'      => $validated['role'],
+            'specialty' => $validated['role'] === 'doctor' ? $validated['specialty'] : null,
+            'password'  => Hash::make($validated['password']),
         ]);
 
         Auth::login($user);
@@ -105,13 +120,14 @@ class AuthController extends Controller
         $role = Auth::user()->role;
 
         return match($role) {
-            'admin'         => redirect()->route('admin.dashboard'),
-            'pharmacist'    => redirect()->route('pharmacy.index'),
-            'doctor','nurse'=> redirect()->route('medical.dashboard'),
-            'lab_attendant' => redirect()->route('lab.dashboard'),
-            'accountant'    => redirect()->route('billing.index'),
-            'mortuary'      => redirect()->route('mortuary.index'),
-            default         => redirect()->route('login'),
+            'admin'                => redirect()->route('admin.dashboard'),
+            'doctor', 'nurse'      => redirect()->route('medical.dashboard'),
+            'receptionist'         => redirect()->route('receptionist.dashboard'),
+            'pharmacist'           => redirect()->route('pharmacy.index'),
+            'lab_attendant'        => redirect()->route('lab.dashboard'),
+            'accountant'           => redirect()->route('billing.index'),
+            'mortuary_attendant'   => redirect()->route('mortuary.index'),
+            default                => redirect()->route('login'),
         };
     }
 

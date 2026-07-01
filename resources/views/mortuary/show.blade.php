@@ -31,7 +31,9 @@
         <p class="text-xs mt-1 ml-10" style="color:rgba(255,255,255,0.3)">Mortuary Module</p>
     </div>
     <nav style="flex:1; padding:1.25rem 0.75rem;">
-        <a href="{{ route('mortuary.index') }}" class="nav-item active"><span class="icon"><i class="fas fa-procedures"></i></span> All Records</a>
+        <a href="{{ route('mortuary.index') }}" class="nav-item active">
+            <span class="icon"><i class="fas fa-procedures"></i></span> All Records
+        </a>
     </nav>
     <div style="padding:1rem 0.75rem; border-top:1px solid rgba(255,255,255,0.07);">
         <form method="POST" action="{{ route('logout') }}">
@@ -62,6 +64,12 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                <i class="fas fa-exclamation-circle mr-1"></i> {{ session('error') }}
+            </div>
+        @endif
+
         {{-- Patient info --}}
         <div class="bg-gray-800 rounded-2xl p-6 text-white">
             <div class="flex items-center gap-4">
@@ -80,6 +88,73 @@
                 </div>
             </div>
         </div>
+
+        {{-- Bill Summary --}}
+        @if($bill)
+            <div class="bg-white rounded-2xl border {{ in_array($bill->status, ['unpaid','partial']) ? 'border-red-200' : 'border-green-200' }} p-6">
+                <h3 class="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                    <i class="fas fa-file-invoice-dollar {{ in_array($bill->status, ['unpaid','partial']) ? 'text-red-500' : 'text-green-500' }}"></i>
+                    Hospital Bill Summary
+                </h3>
+                <div class="space-y-0">
+                    <div class="info-row">
+                        <span class="text-gray-400 text-xs font-medium">Ward / Bed Charges</span>
+                        <span class="font-semibold text-gray-800">TZS {{ number_format($bill->bed_total, 2) }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="text-gray-400 text-xs font-medium">Lab Charges</span>
+                        <span class="font-semibold text-gray-800">TZS {{ number_format($bill->lab_total, 2) }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="text-gray-400 text-xs font-medium">Medication Charges</span>
+                        <span class="font-semibold text-gray-800">TZS {{ number_format($bill->drugs_total, 2) }}</span>
+                    </div>
+                    @if($bill->extra_charges)
+                        @foreach($bill->extra_charges as $charge)
+                            <div class="info-row">
+                                <span class="text-gray-400 text-xs font-medium">{{ $charge['label'] }}</span>
+                                <span class="font-semibold text-gray-800">TZS {{ number_format($charge['amount'], 2) }}</span>
+                            </div>
+                        @endforeach
+                    @endif
+                    <div class="info-row">
+                        <span class="text-gray-600 text-xs font-bold">Grand Total</span>
+                        <span class="font-bold text-gray-900">TZS {{ number_format($bill->grand_total, 2) }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="text-gray-400 text-xs font-medium">Amount Paid</span>
+                        <span class="font-semibold text-green-700">TZS {{ number_format($bill->amount_paid, 2) }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="text-gray-600 text-xs font-bold">Balance Due</span>
+                        <span class="font-bold text-lg {{ $bill->balance > 0 ? 'text-red-600' : 'text-green-600' }}">
+                            TZS {{ number_format($bill->balance, 2) }}
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Bill status badge --}}
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold
+                        {{ $bill->status === 'paid' || $bill->status === 'waived' ? 'bg-green-100 text-green-700' :
+                           ($bill->status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                                                          'bg-red-100 text-red-700') }}">
+                        {{ ucfirst($bill->status) }}
+                    </span>
+                    @if(in_array($bill->status, ['unpaid', 'partial']))
+                        <a href="{{ route('billing.show', $bill) }}"
+                           class="px-4 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition">
+                            <i class="fas fa-cash-register mr-1"></i> Process Payment
+                        </a>
+                    @endif
+                </div>
+            </div>
+        @else
+            <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                No bill found for this patient. Please generate a bill before releasing the body.
+            </div>
+        @endif
 
         {{-- Record details --}}
         <div class="bg-white rounded-2xl border border-purple-100 p-6">
@@ -103,7 +178,7 @@
                     <span class="text-gray-400 text-xs font-medium">Status</span>
                     <span class="px-2.5 py-1 rounded-full text-xs font-semibold
                         {{ $record->status === 'released' ? 'bg-green-100 text-green-700' :
-                           ($record->status === 'received' ? 'bg-blue-100 text-blue-700'  :
+                           ($record->status === 'received' ? 'bg-blue-100 text-blue-700' :
                                                              'bg-red-100 text-red-700') }}">
                         {{ ucfirst($record->status) }}
                     </span>
@@ -142,23 +217,52 @@
                     <i class="fas fa-check mr-2"></i> Confirm Body Received
                 </button>
             </form>
+
         @elseif($record->status === 'received')
-            <div class="bg-white rounded-2xl border border-purple-100 p-6">
-                <h3 class="font-bold text-gray-800 text-sm mb-4">Release Body</h3>
-                <form method="POST" action="{{ route('mortuary.release', $record) }}" class="space-y-4">
-                    @csrf @method('PATCH')
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Release Notes</label>
-                        <textarea name="notes" rows="3"
-                                  placeholder="Recipient name, relationship, ID number..."
-                                  class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-purple-400 resize-none"></textarea>
+            {{-- Block release if bill unpaid --}}
+            @if($bill && in_array($bill->status, ['unpaid', 'partial']))
+                <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                    <i class="fas fa-lock mr-1"></i>
+                    <strong>Release Blocked.</strong> The patient has an outstanding balance of
+                    <strong>TZS {{ number_format($bill->balance, 2) }}</strong>.
+                    Relatives must settle the bill before the body can be released.
+                    <div class="mt-3">
+                        <a href="{{ route('billing.show', $bill) }}"
+                           class="inline-block px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition">
+                            <i class="fas fa-cash-register mr-1"></i> Go to Billing
+                        </a>
                     </div>
-                    <button type="submit"
-                            class="w-full py-3 text-sm font-semibold text-white rounded-xl bg-green-600 hover:bg-green-700 transition">
-                        <i class="fas fa-door-open mr-2"></i> Release Body
-                    </button>
-                </form>
-            </div>
+                </div>
+            @elseif(!$bill)
+                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    No bill found for this patient. Please generate a bill before releasing the body.
+                </div>
+            @else
+                <div class="bg-white rounded-2xl border border-purple-100 p-6">
+                    <h3 class="font-bold text-gray-800 text-sm mb-4">
+                        <i class="fas fa-door-open text-green-500 mr-1"></i> Release Body
+                    </h3>
+                    <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+                        <i class="fas fa-check-circle mr-1"></i>
+                        Bill is fully settled. You may proceed with releasing the body.
+                    </div>
+                    <form method="POST" action="{{ route('mortuary.release', $record) }}" class="space-y-4">
+                        @csrf @method('PATCH')
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Release Notes</label>
+                            <textarea name="notes" rows="3"
+                                      placeholder="Recipient name, relationship, ID number..."
+                                      class="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-purple-400 resize-none"></textarea>
+                        </div>
+                        <button type="submit"
+                                class="w-full py-3 text-sm font-semibold text-white rounded-xl bg-green-600 hover:bg-green-700 transition">
+                            <i class="fas fa-door-open mr-2"></i> Release Body
+                        </button>
+                    </form>
+                </div>
+            @endif
+
         @else
             <div class="p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 text-center font-semibold">
                 <i class="fas fa-check-circle mr-1"></i> Body has been released.

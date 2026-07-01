@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password','role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'specialty'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -28,5 +28,27 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Patients this user is the attending doctor for. Used on the admin
+     * dashboard (User::withCount('patients')) to show each user's
+     * current patient load, and to power a doctor's "My Patients" list.
+     */
+    public function patients()
+    {
+        return $this->hasMany(Patient::class, 'doctor_id');
+    }
+
+    // ── Scopes used by patient triage/routing ───────────────────────
+
+    public function scopeDoctors($query)
+    {
+        return $query->where('role', 'doctor');
+    }
+
+    public function scopeWithSpecialty($query, string $specialty)
+    {
+        return $query->where('specialty', $specialty);
     }
 }
