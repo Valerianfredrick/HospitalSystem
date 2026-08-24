@@ -86,7 +86,11 @@ class BillingController extends Controller
 
         // Recalculate totals (include any new extra charges)
         $extraTotal = collect($validated['extra_charges'] ?? [])->sum('amount');
-        $grandTotal = $bill->bed_total + $bill->lab_total + $bill->drugs_total + $extraTotal;
+        $grandTotal = $bill->bed_total
+            + $bill->lab_total
+            + $bill->drugs_total
+            + $bill->consultation_fee   // ← added
+            + $extraTotal;
         $amountPaid = (float) $validated['amount_paid'];
         $balance    = max(0, $grandTotal - $amountPaid);
         $status     = $balance == 0 ? 'paid' : ($amountPaid > 0 ? 'partial' : 'unpaid');

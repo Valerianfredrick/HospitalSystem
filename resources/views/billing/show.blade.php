@@ -129,6 +129,10 @@
                     <span class="font-semibold">TZS {{ number_format($bill->bed_total) }}</span>
                 </div>
                 <div class="info-row">
+                    <span class="text-gray-500">Consultation Fee</span>
+                    <span class="font-semibold">TZS {{ number_format($bill->consultation_fee) }}</span>
+                </div>
+                <div class="info-row">
                     <span class="text-gray-500">Laboratory Tests</span>
                     <span class="font-semibold">TZS {{ number_format($bill->lab_total) }}</span>
                 </div>
